@@ -125,7 +125,7 @@ function guardiankey_register() {
 			$guardianKeyWS='https://api.guardiankey.io/register';
             // Create new Key
             $key = openssl_random_pseudo_bytes(32);
-            $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length(AES_256_CBC));
+            $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cfb'));
             $keyb64 = base64_encode($key);
             $ivb64 =  base64_encode($iv);
             $agentid = base64_encode(openssl_random_pseudo_bytes(20));
