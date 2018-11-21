@@ -37,27 +37,27 @@ function guardiankey_options_page_html() {
         <tr valign="top">
 		<h2>GuardianKey</h2>
 		 <th scope="row">Registration Email</th>
-        <td><input type="email" name="guardiankey_emailRegister" value="<?php echo esc_attr( get_option('admin_email') ); ?>" readonly size="50"/></td>
+        <td><input type="email" name="gk_emailregister" value="<?php echo esc_attr( get_option('gk_emailregister') ); ?>" size="50"/></td>
         </tr>
         <th scope="row">AgentID</th>
-        <td><input type="text" name="gk_agentid" value="<?php echo esc_attr( get_option('gk_agentid') ); ?>" readonly size="50"/></td>
+        <td><input type="text" name="gk_agentid" value="<?php echo esc_attr( get_option('gk_agentid') ); ?>" size="50"/></td>
         </tr>
          
         <tr valign="top">
         <th scope="row">KEY</th>
-        <td><input type="text" name="gk_key" value="<?php echo esc_attr( get_option('gk_key') ); ?>" readonly size="50"/></td>
+        <td><input type="text" name="gk_key" value="<?php echo esc_attr( get_option('gk_key') ); ?>" size="50"/></td>
         </tr>
         
         <tr valign="top">
         <th scope="row">IV</th>
-        <td><input type="text" name="gk_iv" value="<?php echo esc_attr( get_option('gk_iv') ); ?>" readonly size="50"/></td>
+        <td><input type="text" name="gk_iv" value="<?php echo esc_attr( get_option('gk_iv') ); ?>" size="50"/></td>
         </tr>
          <tr valign="top">
         <th scope="row">OrgID</th>
-        <td><input type="text" name="gk_orgid" value="<?php echo esc_attr( get_option('gk_orgid') ); ?>" readonly size="50"/></td>
+        <td><input type="text" name="gk_orgid" value="<?php echo esc_attr( get_option('gk_orgid') ); ?>" size="50"/></td>
         </tr>
         <th scope="row">AuthGroupIP</th>
-        <td><input type="text" name="gk_authgroupid" value="<?php echo esc_attr( get_option('gk_authgroupid') ); ?>" readonly size="50"/></td>
+        <td><input type="text" name="gk_authgroupid" value="<?php echo esc_attr( get_option('gk_authgroupid') ); ?>" size="50"/></td>
         </tr>
           <tr valign="top">
         <th scope="row">Service name</th>
@@ -113,7 +113,8 @@ function register_mysettings() { // whitelist options
   register_setting( 'guardiankey_options', 'gk_service' );
   register_setting( 'guardiankey_options', 'gk_mailsubject' );
   register_setting( 'guardiankey_options', 'gk_mailhtml' );
-    register_setting( 'guardiankey_options', 'gk_webhook' );
+  register_setting( 'guardiankey_options', 'gk_webhook' );
+  register_setting( 'guardiankey_options', 'gk_emailregister' );
 
 
 }
@@ -167,6 +168,7 @@ function guardiankey_register() {
 			    update_option(  'gk_mailhtml' ,$bodymail, 'yes');
 			    update_option(  'gk_service' ,'WordPress', 'yes');
 			    update_option( 'gk_webwook', $randwh, 'yes');
+			    update_option( 'gk_emailregister', $email, 'yes');
 			    
 				wp_redirect(admin_url('/tools.php?page=guardiankey', 'http'), 301);
 				echo 'If you are not redirected, <a href="'.admin_url('/tools.php?page=guardiankey').'">click here!</a>';
