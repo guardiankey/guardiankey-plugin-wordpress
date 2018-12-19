@@ -2,15 +2,19 @@
 
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
-//require( plugin_dir_path( __FILE__ ).'wp-routes.php');
 include( plugin_dir_path( __FILE__ ).'install.php');
+include( plugin_dir_path( __FILE__ ).'guardiankey.class.php');
 
 
 function wpse27856_set_content_type(){
     return "text/html";
 }
 	
-
+function gk_login_failed ($username) {
+$user = new stdClass();
+$user->user_login = $username;
+	guardiankey_checkUser($username,$user,1);
+}
 function guardiankey_options_page_html() {
 	
     // check user capabilities
@@ -37,7 +41,7 @@ function guardiankey_options_page_html() {
         <tr valign="top">
 		<h2>GuardianKey</h2>
 		 <th scope="row">Registration Email</th>
-        <td><input type="email" name="gk_emailregister" value="<?php echo esc_attr( get_option('gk_emailregister') ); ?>" size="50"/></td>
+        <td><input type="email" name="guardiankey_emailRegister" value="<?php echo esc_attr( get_option('admin_email') ); ?>" readonly size="50"/></td>
         </tr>
         <th scope="row">AgentID</th>
         <td><input type="text" name="gk_agentid" value="<?php echo esc_attr( get_option('gk_agentid') ); ?>" size="50"/></td>
@@ -45,7 +49,7 @@ function guardiankey_options_page_html() {
          
         <tr valign="top">
         <th scope="row">KEY</th>
-        <td><input type="text" name="gk_key" value="<?php echo esc_attr( get_option('gk_key') ); ?>" size="50"/></td>
+        <td><input type="text" name="gk_key" value="<?php echo esc_attr( get_option('gk_key') ); ?>"  size="50"/></td>
         </tr>
         
         <tr valign="top">
@@ -113,8 +117,7 @@ function register_mysettings() { // whitelist options
   register_setting( 'guardiankey_options', 'gk_service' );
   register_setting( 'guardiankey_options', 'gk_mailsubject' );
   register_setting( 'guardiankey_options', 'gk_mailhtml' );
-  register_setting( 'guardiankey_options', 'gk_webhook' );
-  register_setting( 'guardiankey_options', 'gk_emailregister' );
+    register_setting( 'guardiankey_options', 'gk_webhook' );
 
 
 }
@@ -122,131 +125,55 @@ function register_mysettings() { // whitelist options
 
 function guardiankey_register() {
 			global $mailtexts;
+			$guardiankey = new guardiankey();
+
 			$email = get_option('admin_email');
-			$guardianKeyWS='https://api.guardiankey.io/register';
-            // Create new Key
-            $key = openssl_random_pseudo_bytes(32);
-            $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cfb'));
-            $keyb64 = base64_encode($key);
-            $ivb64 =  base64_encode($iv);
-            $agentid = base64_encode(openssl_random_pseudo_bytes(20));
-            $randwh = preg_replace("/[^A-Za-z0-9 ]/", '',base64_encode(openssl_random_pseudo_bytes(6)));
-            $weburl =  rest_get_url_prefix().'/guardiankey/'.$randwh;
+			$randwh = preg_replace("/[^A-Za-z0-9 ]/", '',base64_encode(openssl_random_pseudo_bytes(6)));
+            $weburl =  site_url().'/'.rest_get_url_prefix().'/guardiankey/'.$randwh;
             
  		    $notify_method = 'webhook';
 			$notify_data = base64_encode('{"webhook_url":"'.$weburl.'","systemname":"WordPress","mailmsgsubject":"","usermailmsg":""}');
-			
-			$data = array(
-					'email' => $email,
-					'keyb64' => $keyb64,
-					'ivb64' => $ivb64,
-					 'notify_method' => $notify_method,
-					'notify_data' => $notify_data
-					);
-			$ch = curl_init();
-			curl_setopt($ch,CURLOPT_URL, $guardianKeyWS);
-			curl_setopt($ch,CURLOPT_POST, true);
-			curl_setopt($ch,CURLOPT_POSTFIELDS, $data);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-			$returned = curl_exec($ch);
-			curl_close($ch);
-			$returns = @json_decode($returned);
-			if ($returns === null) {
-				echo  'An error ocurred: '.$returned;
-			} else {
-			
+			echo $notify_data;
+			$returns = $guardiankey->register($email,$notify_method,$notify_data);
+			if (is_array($returns)) {
 				$url = admin_url();
 				$bodymail = str_replace("YOUR_SYSTEM_URL",$url,$mailtexts->bodymail);
 				$subjectmail = str_replace("YOUR_SYSTEM_URL",$url,$mailtexts->subjectmail);
-				update_option( 'gk_agentid', $agentid, 'yes' );
-				update_option( 'gk_key' , $keyb64, 'yes' );
-				update_option( 'gk_iv' , $ivb64, 'yes' );
-				update_option( 'gk_orgid' , $returns->organizationId, 'yes' );
-				update_option( 'gk_authgroupid' , $returns->authGroupId, 'yes' );
+				update_option( 'gk_agentid', $returns['agentid'], 'yes' );
+				update_option( 'gk_key' , $returns['key'], 'yes' );
+				update_option( 'gk_iv' , $returns['iv'], 'yes' );
+				update_option( 'gk_orgid' , $returns['orgid'], 'yes' );
+				update_option( 'gk_authgroupid' , $returns['groupid'], 'yes' );
 				update_option( 'gk_dnsreverse' , 'yes');
 				update_option( 'gk_mailsubject' , $subjectmail, 'yes' );
 			    update_option(  'gk_mailhtml' ,$bodymail, 'yes');
 			    update_option(  'gk_service' ,'WordPress', 'yes');
 			    update_option( 'gk_webwook', $randwh, 'yes');
-			    update_option( 'gk_emailregister', $email, 'yes');
 			    
 				wp_redirect(admin_url('/tools.php?page=guardiankey', 'http'), 301);
 				echo 'If you are not redirected, <a href="'.admin_url('/tools.php?page=guardiankey').'">click here!</a>';
+				
+			} else {
+				echo $returns;
 			}
 }
 	
-function _json_encode($obj) {
-         array_walk_recursive($obj, function (&$item, $key) {
-         $item = utf8_encode($item);
-      });
-      return json_encode($obj);
-}
 
-function create_message($username = '',$attempt = 0) {
-		 $keyb64 = get_option('gk_key');
-		 $ivb64 = get_option('gk_iv');
-		 $agentid = get_option('gk_agentid');
-		 $service = get_option('gk_service');
-		 $orgid = get_option('gk_orgid');
-		 $authgroupid =  get_option('gk_authgroupid');
-		 $reverse = get_option('dnsreverse');
-		 $timestamp = time();
-		 
-        if(strlen($agentid)>0){
-
-          $key=base64_decode($keyb64);
-          $iv=base64_decode($ivb64);
-          $json = new stdClass();
-          $json->generatedTime=$timestamp;
-          $json->agentId=$agentid;
-          $json->organizationId=$orgid;
-          $json->authGroupId=$authgroupid;
-          $json->service=$service;
-          $json->clientIP=$_SERVER['REMOTE_ADDR'];
-          $json->clientReverse = ($reverse=="Yes")?  gethostbyaddr($json->clientIP) : "";
-          $json->userName=$username;
-          $json->authMethod=$method;
-          $json->loginFailed=$attempt;
-          $json->userAgent=substr($_SERVER['HTTP_USER_AGENT'],0,500);
-          $json->psychometricTyped="";
-          $json->psychometricImage="";
-          $tmpmessage = _json_encode($json);
-		  $blocksize=8;
-          $padsize = $blocksize - (strlen($tmpmessage) % $blocksize);
-          $message=str_pad($tmpmessage,$padsize," ");
-		 
-		  $cipher = openssl_encrypt($message, 'aes-256-cfb8', $key, 0, $iv);
-		  return $cipher;
+function guardiankey_checkUser($username, $user,$attempt=0,$event_type = 'Authentication') {
+		if ($user->user_email) {
+			$usremail = $user->user_email;
+		} else {
+			$usremail = '';
 		}
-	}
-
-
-function guardiankey_checkUser($user, $password = '') {
-		$guardianKeyWS='https://api.guardiankey.io/checkaccess';
-		$attempt = 0;
-		$message = create_message($user->user_login,$attempt);
-		$tmpdata = new stdClass();
-		$tmpdata->id = get_option('gk_authgroupid');
-		$tmpdata->message = $message;
-		$data = _json_encode($tmpdata);
 		
-        $ch = curl_init();
-			curl_setopt($ch,CURLOPT_URL, $guardianKeyWS);
-			curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");                                                                     
-			curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-				'Content-Type: application/json',                                                                                
-	            'Content-Length: ' . strlen($data)));  
-			curl_setopt($ch,CURLOPT_POSTFIELDS, $data);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-		$returned = curl_exec($ch);
-		curl_close($ch);
+		$guardiankey = new guardiankey();
+		$returned = $guardiankey->checkaccess($username,$usremail,$attempt,$event_type);
+		
 		$returns = @json_decode($returned);
-			if ($returns === null) {
+			if ($returns === null OR $returns->response == 'ERROR') {
 				echo  'An error ocurred: '.$returned;
-				
 			} else {
-									return $user;
-
+				
 				if ($returns->response <> 'ACCEPT' OR $returns->response <> 'TIMEOUT' ) {
 					return new WP_Error( 'broke', __( "Attempt of login Blocked!", "GK" ) );
 					
