@@ -133,7 +133,6 @@ function guardiankey_register() {
             
  		    $notify_method = 'webhook';
 			$notify_data = base64_encode('{"webhook_url":"'.$weburl.'","systemname":"WordPress","mailmsgsubject":"","usermailmsg":""}');
-			echo $notify_data;
 			$returns = $guardiankey->register($email,$notify_method,$notify_data);
 			if (is_array($returns)) {
 				$url = admin_url();
@@ -244,7 +243,7 @@ function GKdoAction(WP_REST_Request $request ) {
 				$evdate = $date->format("Y-m-d H:i:s")." $locale";
 				
 				$templatevars = array('[LOCATION]','[DATETIME]','[SYSTEM]','[USERNAME]','[IPADDRESS]','[CHECKURL]');
-				$subsvars = array($GKdata->location,$evdate,$GKdata->system,$GKdata->username,$GKdata->ipaddress,$GKdata->checkurl);
+				$subsvars = array($GKdata->city.'/'.$GKdata->country,$evdate,$GKdata->client_os.'/'.$GKdata->client_ua,$GKdata->userName,$GKdata->clientIP,$GKdata->checkurl);
 				$msg = str_replace($templatevars,$subsvars,get_option('gk_mailhtml'));
 				$subj = str_replace($templatevars,$subsvars,get_option('gk_mailsubject'));
 				
