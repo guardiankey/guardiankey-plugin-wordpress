@@ -1,10 +1,9 @@
 <?php
 
-define('AES_256_CBC', 'aes-256-cbc');
 
 class guardiankey
 {
-//$a = 1;
+
      private $GKconfig;
      
 
@@ -91,10 +90,22 @@ class guardiankey
     function sendevent($username, $useremail="", $attempt = "0", $eventType = 'Authentication')
     {
         $GKconfig = $this->GKconfig;
-        $cipher = $this->create_message($username, $useremail, $attempt, $eventType);
-        $payload = $GKconfig['authgroupid'] . "|" . $cipher;
-        $socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
-        socket_sendto($socket, $payload, strlen($payload), 0, "collector.guardiankey.net", "8888");
+		$guardianKeyWS = 'https://api.guardiankey.io/sendevent';
+        $message = $this->create_message($username, $useremail, $attempt, $eventType);
+		$tmpdata = new stdClass();
+        $tmpdata->id = $GKconfig['authgroupid'];
+        $tmpdata->message = $message;
+		$data = $this->_json_encode($tmpdata);
+		$response = wp_remote_post( $guardianKeyWS, array(
+			'method' => 'POST',
+			'timeout' => 45,
+			'redirection' => 5,
+			'httpversion' => '1.0',
+			'blocking' => true,
+			'headers' => array('Content-Type' => 'application/json'),
+			'body' => $data
+			)
+		);
     }
 
     function checkaccess($username, $useremail="", $attempt = "0", $eventType = 'Authentication')
@@ -106,25 +117,20 @@ class guardiankey
         $tmpdata->id = $GKconfig['authgroupid'];
         $tmpdata->message = $message;
         $data = $this->_json_encode($tmpdata);
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $guardianKeyWS);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'Content-Type: application/json',
-            'Content-Length: ' . strlen($data)
-        ));
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-//         curl_setopt($ch, CURLOPT_VERBOSE, true);
-        $return = curl_exec($ch);
-        $info = curl_getinfo($ch);
-        curl_close($ch);
-        
+		$response = wp_remote_post( $guardianKeyWS, array(
+			'method' => 'POST',
+			'timeout' => 45,
+			'redirection' => 5,
+			'httpversion' => '1.0',
+			'blocking' => true,
+			'headers' => array('Content-Type' => 'application/json'),
+			'body' => $data
+			)
+		);
         
         try {
-            $foo = json_decode($return);
-            return $return;
+            $foo = json_decode($response['body']);
+            return $response['body'];
         } catch (Exception $e) {
             return '{"response":"ERROR"}';
         }
@@ -146,7 +152,7 @@ class guardiankey
         $guardianKeyWS = 'https://api.guardiankey.io/register';
         // Create new Key
         $key = openssl_random_pseudo_bytes(32);
-        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length(AES_256_CBC));
+        $iv = openssl_random_pseudo_bytes(16);
         $agentid = sha1(base64_encode(openssl_random_pseudo_bytes(20)));
         $keyb64 = base64_encode($key);
         $ivb64 = base64_encode($iv);
@@ -168,17 +174,19 @@ class guardiankey
             );
         }
         
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $guardianKeyWS);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-//         curl_setopt($ch, CURLOPT_VERBOSE, true);
-        $returned = curl_exec($ch);
-        curl_close($ch);
-        $returns = @json_decode($returned);
+        $returned = wp_remote_post( $guardianKeyWS, array(
+			'method' => 'POST',
+			'timeout' => 45,
+			'redirection' => 5,
+			'httpversion' => '1.0',
+			'blocking' => true,
+			'body' => $data
+				)
+			);
+        
+        $returns = @json_decode($returned['body']);
         if ($returns === null) {
-            throw new Exception('An error ocurred: ' . $returned);
+            return 'An error ocurred: ' . $returned['body'];
         } else {
             return array(   "email"=> $email,
                             "agentid"=> $agentid,
@@ -200,8 +208,8 @@ class guardiankey
             $authgroupid = $GKconfig['authgroupid'];
         }
         
-        $data['authGroupId'] = $_POST['authGroupId'];
-        $data['data'] = $_POST['data'];
+        $data['authGroupId'] = sanitize_text_field($_POST['authGroupId']);
+        $data['data'] = sanitize_text_field($_POST['data']);
         
         if ($data['authGroupId'] == $authgroupid ) {
             $key = base64_decode($keyb64);
