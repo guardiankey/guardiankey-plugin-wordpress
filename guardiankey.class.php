@@ -11,7 +11,7 @@ class guardiankey
     function check_extensions()
     {
         $nook=False;
-        $extensions=array("curl");
+        $extensions=array("curl","xml");
         
         foreach($extensions as $ext){
             if ( !extension_loaded ($ext) )
@@ -48,6 +48,22 @@ class guardiankey
         return json_encode($obj);
     }
 
+
+    function getUserIP()
+    {
+        if( array_key_exists('HTTP_X_FORWARDED_FOR', $_SERVER) && !empty($_SERVER['HTTP_X_FORWARDED_FOR']) ) {
+            if (strpos($_SERVER['HTTP_X_FORWARDED_FOR'], ',')>0) {
+                $addr = explode(",",$_SERVER['HTTP_X_FORWARDED_FOR']);
+                return trim($addr[0]);
+            } else {
+                return $_SERVER['HTTP_X_FORWARDED_FOR'];
+            }
+        } else {
+            return $_SERVER['REMOTE_ADDR'];
+        }
+    }
+
+
     function create_message($username, $useremail="", $attempt = 0, $eventType="Authentication")
     {
         $GKconfig = $this->GKconfig;
@@ -68,7 +84,7 @@ class guardiankey
             $json->organizationId = $orgid;
             $json->authGroupId = $authgroupid;
             $json->service = $GKconfig['service'];
-            $json->clientIP = $_SERVER['REMOTE_ADDR'];
+            $json->clientIP = $this->getUserIP();;
             $json->clientReverse = ($reverse == "True") ? gethostbyaddr($json->clientIP) : "";
             $json->userName = $username;
             $json->authMethod = "";
@@ -91,6 +107,7 @@ class guardiankey
     {
         $GKconfig = $this->GKconfig;
 		$guardianKeyWS = 'https://api.guardiankey.io/sendevent';
+		//$guardianKeyWS = 'https://demoserpro.guardiankey.io/sendevent';
         $message = $this->create_message($username, $useremail, $attempt, $eventType);
 		$tmpdata = new stdClass();
         $tmpdata->id = $GKconfig['authgroupid'];
@@ -129,8 +146,12 @@ class guardiankey
 		);
         
         try {
-            $foo = json_decode($response['body']);
-            return $response['body'];
+			if (is_array($response)) {
+				$foo = json_decode($response['body']);
+				return $response['body'];
+			} else {
+				return '{"response":"ERROR"}';
+			}
         } catch (Exception $e) {
             return '{"response":"ERROR"}';
         }
@@ -186,7 +207,7 @@ class guardiankey
         
         $returns = @json_decode($returned['body']);
         if ($returns === null) {
-            return 'An error ocurred: ' . $returned['body'];
+            return $returned['body'];
         } else {
             return array(   "email"=> $email,
                             "agentid"=> $agentid,

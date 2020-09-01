@@ -2,9 +2,9 @@
 Contributors: gbernardes,reddhatt
 Tags: security, authentication,block hackers,login security
 Requires at least: 4.4
-Tested up to: 5.0.2
-Stable tag: 1.3
-Requires PHP: 5.4
+Tested up to: 5.5
+Stable tag: 3.1
+Requires PHP: 5.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,6 +49,34 @@ If you have troubles, join the community to get help, at https://groups.google.c
 2. E-mail of notification
 
 == Changelog ==
+
+= 3.1 = 
+* Fix bugs
+
+= 3.0 = 
+* Fix bugs
+* Add support to receive push notifications with GuardianKey App
+
+= 2.4 =
+* Fix bugs
+* Change notification method
+
+= 2.3 =
+* Fix bugs
+
+= 2.2 =
+* Fix bugs
+
+= 2.1 =
+* Fix bugs
+
+= 2.0 =
+* New function for blocking malicious IPs
+* Fix bugs
+
+= 1.4 =
+* Improvements in attack detection 
+* Fix bugs
 
 = 1.3 =
 * Update sendevent function for use REST interface instead UDP
